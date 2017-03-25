@@ -1,7 +1,12 @@
 package nz.james.senappsproximityapplication;
 
-import android.location.Location;
+import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
@@ -23,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView textViewDetected;
     private TextView textViewRSSI;
     private BeaconSighting beaconSighting;
+    public static final int REQUEST_FINE_LOCATION = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +43,67 @@ public class MainActivity extends AppCompatActivity {
 
         GimbalDebugger.enableBeaconSightingsLogging();
 
+        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if(permissionCheck != PackageManager.PERMISSION_GRANTED){
+            if(ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_FINE_LOCATION)){
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+                        builder.setMessage("This app needs access to your location in order to function. Please grant access when prompted.");
+                        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+
+                        builder.show();
+                    }
+                });
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_FINE_LOCATION);
+            }
+
+
+
+
+        }
+
+
+
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults){
+        switch(requestCode){
+            case REQUEST_FINE_LOCATION: {
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    startApp();
+                } else {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
+                    builder.setMessage("This app needs access to your location in order to work. Please allow access when prompted.");
+                    builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+
+                    builder.show();
+                }
+
+                return;
+            }
+        }
+    }
+
+    private void startApp(){
         textViewDetected = (TextView) findViewById(R.id.textViewDetected);
+
+
         textViewRSSI = (TextView) findViewById(R.id.textViewRSSI);
 
         BeaconManager beaconManager = new BeaconManager();
@@ -46,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
             public void onBeaconSighting(BeaconSighting beaconSighting) {
                 super.onBeaconSighting(beaconSighting);
                 String beaconID = beaconSighting.getBeacon().getIdentifier();
-                Log.d("BeaconManager", "Sighted Beacon with ID: " + beaconID);
+                Log.d("SenappsProximityApp", "Sighted Beacon with ID: " + beaconID);
                 textViewDetected.setText("Sighted Beacon with ID: " + beaconID);
                 textViewRSSI.setText("RSSI: " + beaconSighting.getRSSI());
             }
@@ -58,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
                 String placeID = visit.getPlace().getIdentifier();
-                Log.d("PlaceManager", "Place entered: " + placeID);
+                Log.d("SenappsProximityApp", "Place entered: " + placeID);
                 textViewDetected.setText("Place entered: " + placeID);
             }
 
@@ -71,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
             public void onVisitEnd(Visit visit) {
                 super.onVisitEnd(visit);
                 String placeID = visit.getPlace().getIdentifier();
-                Log.d("PlaceManager", "Place left: " + placeID);
+                Log.d("SenappsProximityApp", "Place left: " + placeID);
                 textViewDetected.setText("Place left: " + placeID);
             }
 
@@ -79,18 +145,13 @@ public class MainActivity extends AppCompatActivity {
             public void onBeaconSighting(BeaconSighting beaconSighting, List<Visit> list) {
                 super.onBeaconSighting(beaconSighting, list);
                 String beaconID = beaconSighting.getBeacon().getIdentifier();
-                Log.d("PlaceManager", "Sighted Beacon with ID within current visit: " + beaconID);
+                Log.d("SenappsProximityApp", "Sighted Beacon with ID within current visit: " + beaconID);
                 textViewDetected.setText("Sighted Beacon with ID within current visit: " + beaconID);
                 textViewRSSI.setText("RSSI: " + beaconSighting.getRSSI());
-            }
-
-            @Override
-            public void locationDetected(Location location) {
-                super.locationDetected(location);
             }
         });
 
         placeManager.startMonitoring();
-
+        beaconManager.startListening();
     }
 }
