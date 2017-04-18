@@ -10,21 +10,10 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="nz.james.senappsproximityapplication.MainActivity">
 
-    <TextView
-        android:text="[Beacon Detected]"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="133dp"
-        android:id="@+id/textViewDetected"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true" />
+    <LinearLayout
+        android:id="@+id/container"
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"></LinearLayout>
 
-    <TextView
-        android:text="[RSSI]"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/textViewDetected"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="32dp"
-        android:id="@+id/textViewRSSI" />
 </RelativeLayout>
