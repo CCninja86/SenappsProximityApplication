@@ -1,28 +1,62 @@
 package nz.james.senappsproximityapplication;
 
-import android.app.Activity;
+import android.Manifest;
 import android.app.FragmentTransaction;
-import android.net.Uri;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AppCompatActivity;
 
-public class MainActivity extends Activity implements DetectionFragment.OnFragmentInteractionListener {
+public class MainActivity extends AppCompatActivity implements WelcomeFragment.OnFragmentInteractionListener {
 
-
+    public static final int PERMISSION_FINE_LOCATION = 1;
+    private FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        DetectionFragment detectionFragment = new DetectionFragment();
-        FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
-        fragmentTransaction.add(R.id.container, detectionFragment);
-        fragmentTransaction.commit();
+        int permissionCheck = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if(permissionCheck == PackageManager.PERMISSION_GRANTED){
+            startApp();
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_FINE_LOCATION);
+        }
     }
 
 
     @Override
-    public void onFragmentInteraction(Uri uri) {
+    public void onWelcomeFragmentInteraction(String action) {
+        switch (action){
+            case "information":
+                InformationFragment informationFragment = new InformationFragment();
+                fragmentTransaction.replace(R.id.container, informationFragment);
+                fragmentTransaction.addToBackStack(null);
+                fragmentTransaction.commit();
 
+                break;
+        }
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults){
+        switch (requestCode){
+            case PERMISSION_FINE_LOCATION:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    startApp();
+                } else {
+
+                }
+        }
+    }
+
+    private void startApp(){
+        WelcomeFragment welcomeFragment = new WelcomeFragment();
+        fragmentTransaction.add(R.id.container, welcomeFragment);
+        fragmentTransaction.commit();
+    }
+
 }

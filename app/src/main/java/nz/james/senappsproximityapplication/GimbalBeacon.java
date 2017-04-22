@@ -1,6 +1,7 @@
 package nz.james.senappsproximityapplication;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by james on 18/03/2017.
@@ -11,7 +12,8 @@ public class GimbalBeacon {
     private String id;
     private String factoryId;
     private String name;
-    private HashMap<String, String> attributes;
+    private Map<String, String> beacon_attributes;
+
 
     public GimbalBeacon(){
 
@@ -41,11 +43,11 @@ public class GimbalBeacon {
         this.name = name;
     }
 
-    public HashMap<String, String> getAttributes() {
-        return attributes;
+    public Map<String, String> getAttributes() {
+        return beacon_attributes;
     }
 
     public void setAttributes(HashMap<String, String> attributes) {
-        this.attributes = attributes;
+        this.beacon_attributes = attributes;
     }
 }
