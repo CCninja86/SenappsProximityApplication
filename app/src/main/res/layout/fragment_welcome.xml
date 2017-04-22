@@ -14,16 +14,35 @@
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
         android:scaleType="fitXY"
-        app:srcCompat="@drawable/welcome_placeholder" />
+        app:srcCompat="@drawable/welcome_placeholder"
+        android:layout_alignTop="@+id/imageViewInformation" />
 
     <ImageView
         android:id="@+id/imageViewInformation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        app:srcCompat="@drawable/information_icon"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="29dp" />
+
+    <TextView
+        android:id="@+id/textViewServiceStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/imageViewBackground"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        app:srcCompat="@drawable/information_icon" />
+        android:gravity="center"
+        android:text="Gimbal Service Status" />
+
+    <ImageView
+        android:id="@+id/imageViewServiceStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/imageViewBackground"
+        android:layout_toEndOf="@+id/textViewServiceStatus"
+        app:srcCompat="@drawable/gimbal_service_offline_32" />
 
 </RelativeLayout>

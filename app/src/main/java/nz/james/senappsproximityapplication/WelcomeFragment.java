@@ -4,6 +4,7 @@ import android.app.Fragment;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -63,9 +64,9 @@ public class WelcomeFragment extends Fragment {
     public ListView listView;
 
     private Map<String, String> headers;
-
     RequestQueue queue;
-    private Response.Listener<GimbalPlace> gimbalPlaceListener;
+
+    private ImageView imageViewServiceStatus;
 
     public WelcomeFragment() {
         // Required empty public constructor
@@ -112,6 +113,9 @@ public class WelcomeFragment extends Fragment {
             }
         });
 
+        imageViewServiceStatus = (ImageView) view.findViewById(R.id.imageViewServiceStatus);
+        imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_offline_32);
+
         queue = Volley.newRequestQueue(getActivity());
         headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
@@ -121,7 +125,12 @@ public class WelcomeFragment extends Fragment {
 
         if(!Gimbal.isStarted()){
             Gimbal.start();
+            imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_online_32);
+        } else {
+            imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_online_32);
         }
+
+        monitorGimbalStatus();
 
         initView();
         monitorPlace();
@@ -186,7 +195,6 @@ public class WelcomeFragment extends Fragment {
 
     private void initView() {
         GimbalLogConfig.enableUncaughtExceptionLogging();
-        Toast.makeText(getActivity(), "Gimbal API Key Successfully Set", Toast.LENGTH_SHORT).show();
         GimbalDebugger.enableBeaconSightingsLogging();
     }
 
@@ -218,6 +226,7 @@ public class WelcomeFragment extends Fragment {
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
+                Toast.makeText(getActivity(), "Visit started", Toast.LENGTH_LONG).show();
                 GetPlaceTask getPlaceTask = new GetPlaceTask(visit.getPlace().getIdentifier());
                 getPlaceTask.execute();
 
@@ -242,6 +251,7 @@ public class WelcomeFragment extends Fragment {
     private class GetPlaceTask extends AsyncTask<Void, Void, Void> {
 
         private String placeID;
+        private Response.Listener<GimbalPlace> gimbalPlaceListener;
         private Response.ErrorListener errorListener;
 
 
@@ -250,8 +260,8 @@ public class WelcomeFragment extends Fragment {
 
             gimbalPlaceListener = new Response.Listener<GimbalPlace>() {
                 @Override
-                public void onResponse(GimbalPlace response) {
-                    GimbalBeacon beacon = response.getBeacons()[0];
+                public void onResponse(GimbalPlace place) {
+                    GimbalBeacon beacon = place.getBeacons()[0];
                     String beaconFactoryID = beacon.getFactoryId();
 
                     Toast.makeText(getActivity(), "The Factory ID for the Beacon associated with this place is " + beaconFactoryID, Toast.LENGTH_LONG).show();
@@ -308,8 +318,8 @@ public class WelcomeFragment extends Fragment {
 
             gimbalBeaconListener = new Response.Listener<GimbalBeacon>() {
                 @Override
-                public void onResponse(GimbalBeacon response) {
-                    int associatedInteractionID = Integer.parseInt(response.getAttributes().get("associated_interaction_ID"));
+                public void onResponse(GimbalBeacon beacon) {
+                    int associatedInteractionID = Integer.parseInt(beacon.getAttributes().get("associated_interaction_ID"));
                     Toast.makeText(getActivity(), "The ID of the Interaction associated with the Beacon is " + associatedInteractionID, Toast.LENGTH_LONG).show();
 
                 }
@@ -343,5 +353,26 @@ public class WelcomeFragment extends Fragment {
         protected void onPostExecute(Void result){
 
         }
+    }
+
+    private void monitorGimbalStatus(){
+        final Handler handler = new Handler();
+        handler.postDelayed(new Runnable() {
+            private long time = 0;
+
+            @Override
+            public void run() {
+                if(Gimbal.isStarted()){
+                    imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_online_32);
+                } else {
+                    imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_offline_32);
+                    Toast.makeText(getActivity(), "Gimbal Service went offline", Toast.LENGTH_LONG).show();
+                }
+
+
+                time += 5000;
+                handler.postDelayed(this, 5000);
+            }
+        }, 5000);
     }
 }

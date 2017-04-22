@@ -3,15 +3,15 @@ package nz.james.senappsproximityapplication;
 import android.Manifest;
 import android.app.FragmentTransaction;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity implements WelcomeFragment.OnFragmentInteractionListener {
+public class MainActivity extends AppCompatActivity implements WelcomeFragment.OnFragmentInteractionListener, InformationFragment.OnFragmentInteractionListener {
 
     public static final int PERMISSION_FINE_LOCATION = 1;
-    private FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +33,7 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
         switch (action){
             case "information":
                 InformationFragment informationFragment = new InformationFragment();
+                FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
                 fragmentTransaction.replace(R.id.container, informationFragment);
                 fragmentTransaction.addToBackStack(null);
                 fragmentTransaction.commit();
@@ -55,8 +56,13 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
 
     private void startApp(){
         WelcomeFragment welcomeFragment = new WelcomeFragment();
+        FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
         fragmentTransaction.add(R.id.container, welcomeFragment);
         fragmentTransaction.commit();
     }
 
+    @Override
+    public void onFragmentInteraction(Uri uri) {
+
+    }
 }
