@@ -227,8 +227,8 @@ public class WelcomeFragment extends Fragment {
                 super.onVisitStart(visit);
 
                 Toast.makeText(getActivity(), "Visit started", Toast.LENGTH_LONG).show();
-                GetPlaceTask getPlaceTask = new GetPlaceTask(visit.getPlace().getIdentifier());
-                getPlaceTask.execute();
+                PlayInteractionTask playInteractionTask = new PlayInteractionTask(visit.getPlace().getIdentifier());
+                playInteractionTask.execute();
 
 
             }
@@ -248,15 +248,49 @@ public class WelcomeFragment extends Fragment {
         return obj;
     }
 
-    private class GetPlaceTask extends AsyncTask<Void, Void, Void> {
+    private class PlayInteractionTask extends AsyncTask<Void, Void, Void> {
 
         private String placeID;
+        private String beaconFactoryID;
         private Response.Listener<GimbalPlace> gimbalPlaceListener;
+        private Response.Listener<GimbalBeacon> gimbalBeaconListener;
+        private Response.Listener<Interaction> interactionListener;
+        private Response.Listener<Trigger> triggerListener;
         private Response.ErrorListener errorListener;
 
 
-        public GetPlaceTask(String placeID){
+        public PlayInteractionTask(String placeID){
             this.placeID = placeID;
+
+            triggerListener = new Response.Listener<Trigger>() {
+                @Override
+                public void onResponse(Trigger trigger) {
+                    String triggerType = trigger.getType();
+                }
+            };
+
+            interactionListener = new Response.Listener<Interaction>() {
+                @Override
+                public void onResponse(Interaction interaction) {
+                    int triggerID = Integer.parseInt(interaction.getTriggerID());
+
+                    Toast.makeText(getActivity(), "Getting Trigger information for ID: " + triggerID, Toast.LENGTH_LONG).show();
+
+                    String url = "http://senapps.ddns.net/database_api.php?action=getTrigger&id=" + triggerID;
+                    GsonRequest<Trigger> gsonRequest = new GsonRequest<>(url, Trigger.class, null, triggerListener, errorListener);
+                }
+            };
+
+            gimbalBeaconListener = new Response.Listener<GimbalBeacon>() {
+                @Override
+                public void onResponse(GimbalBeacon beacon) {
+                    int associatedInteractionID = Integer.parseInt(beacon.getAttributes().get("associated_interaction_ID"));
+                    Toast.makeText(getActivity(), "Associated Interaction ID: " + associatedInteractionID, Toast.LENGTH_LONG).show();
+                    String url = "http://senapps.ddns.net/database_api.php?action=getInteraction&id=" + associatedInteractionID;
+                    GsonRequest<Interaction> gsonRequest = new GsonRequest<>(url, Interaction.class, null, interactionListener, errorListener);
+                    queue.add(gsonRequest);
+                }
+            };
 
             gimbalPlaceListener = new Response.Listener<GimbalPlace>() {
                 @Override
@@ -266,15 +300,10 @@ public class WelcomeFragment extends Fragment {
 
                     Toast.makeText(getActivity(), "The Factory ID for the Beacon associated with this place is " + beaconFactoryID, Toast.LENGTH_LONG).show();
 
-                    final GetInteractionIDTask getInteractionIDTask = new GetInteractionIDTask(beaconFactoryID);
+                    String url = "https://manager.gimbal.com/api/beacons/" + beaconFactoryID;
 
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            getInteractionIDTask.execute();
-                        }
-                    });
-
+                    GsonRequest<GimbalBeacon> gsonRequest = new GsonRequest<>(url, GimbalBeacon.class, headers, gimbalBeaconListener, errorListener);
+                    queue.add(gsonRequest);
                 }
             };
 
@@ -294,56 +323,7 @@ public class WelcomeFragment extends Fragment {
         @Override
         protected Void doInBackground(Void... params) {
             String url = "https://manager.gimbal.com/api/v2/places/" + placeID;
-
             GsonRequest<GimbalPlace> gsonRequest = new GsonRequest<>(url, GimbalPlace.class, headers, gimbalPlaceListener, errorListener);
-            queue.add(gsonRequest);
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void result){
-
-        }
-    }
-
-    private class GetInteractionIDTask extends AsyncTask<Void, Void, Void> {
-
-        private String beaconFactoryID;
-        private Response.ErrorListener errorListener;
-        private Response.Listener<GimbalBeacon> gimbalBeaconListener;
-
-        public GetInteractionIDTask(String beaconFactoryID){
-            this.beaconFactoryID = beaconFactoryID;
-
-            gimbalBeaconListener = new Response.Listener<GimbalBeacon>() {
-                @Override
-                public void onResponse(GimbalBeacon beacon) {
-                    int associatedInteractionID = Integer.parseInt(beacon.getAttributes().get("associated_interaction_ID"));
-                    Toast.makeText(getActivity(), "The ID of the Interaction associated with the Beacon is " + associatedInteractionID, Toast.LENGTH_LONG).show();
-
-                }
-            };
-
-            errorListener = new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.d("VolleyError", error.getMessage());
-                }
-            };
-
-        }
-
-        @Override
-        protected void onPreExecute(){
-
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            String url = "https://manager.gimbal.com/api/beacons/" + beaconFactoryID;
-
-            GsonRequest<GimbalBeacon> gsonRequest = new GsonRequest<>(url, GimbalBeacon.class, headers, gimbalBeaconListener, errorListener);
             queue.add(gsonRequest);
 
             return null;

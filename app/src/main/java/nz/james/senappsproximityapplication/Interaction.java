@@ -6,62 +6,80 @@ package nz.james.senappsproximityapplication;
 
 public class Interaction {
 
-    private int id;
-    private String name;
-    private String description;
-    private String trigger;
-    private String actionType;
-    private String contentName;
+    private String ID;
+    private String InteractionName;
+    private String InteractionDescription;
+    private String TriggerID;
+    private String ActionType;
+    private String ContentName;
+    private String NotificationMessage;
+    private String user;
 
     public Interaction(){
 
     }
 
-    public int getId() {
-        return id;
+    public String getID() {
+        return ID;
     }
 
-    public void setId(int id) {
-        this.id = id;
+    public void setID(String ID) {
+        this.ID = ID;
     }
 
-    public String getName() {
-        return name;
+    public String getInteractionName() {
+        return InteractionName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setInteractionName(String interactionName) {
+        InteractionName = interactionName;
     }
 
-    public String getDescription() {
-        return description;
+    public String getInteractionDescription() {
+        return InteractionDescription;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setInteractionDescription(String interactionDescription) {
+        InteractionDescription = interactionDescription;
     }
 
-    public String getTrigger() {
-        return trigger;
+    public String getTriggerID() {
+        return TriggerID;
     }
 
-    public void setTrigger(String trigger) {
-        this.trigger = trigger;
+    public void setTriggerID(String triggerID) {
+        TriggerID = triggerID;
     }
 
     public String getActionType() {
-        return actionType;
+        return ActionType;
     }
 
     public void setActionType(String actionType) {
-        this.actionType = actionType;
+        ActionType = actionType;
     }
 
     public String getContentName() {
-        return contentName;
+        return ContentName;
     }
 
     public void setContentName(String contentName) {
-        this.contentName = contentName;
+        ContentName = contentName;
+    }
+
+    public String getNotificationMessage() {
+        return NotificationMessage;
+    }
+
+    public void setNotificationMessage(String notificationMessage) {
+        NotificationMessage = notificationMessage;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public void setUser(String user) {
+        this.user = user;
     }
 }
