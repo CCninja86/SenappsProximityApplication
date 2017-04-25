@@ -11,7 +11,7 @@ public class Interaction {
     private String InteractionDescription;
     private String TriggerID;
     private String ActionType;
-    private String ContentName;
+    private String ContentID;
     private String NotificationMessage;
     private String user;
 
@@ -59,12 +59,12 @@ public class Interaction {
         ActionType = actionType;
     }
 
-    public String getContentName() {
-        return ContentName;
+    public String getContentID() {
+        return ContentID;
     }
 
-    public void setContentName(String contentName) {
-        ContentName = contentName;
+    public void getContentID(String contentID) {
+        ContentID = contentID;
     }
 
     public String getNotificationMessage() {

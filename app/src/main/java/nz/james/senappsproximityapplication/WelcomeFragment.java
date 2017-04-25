@@ -1,23 +1,18 @@
 package nz.james.senappsproximityapplication;
 
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.content.Context;
-import android.os.AsyncTask;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
-import android.widget.ListView;
 import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.Volley;
 import com.gimbal.android.BeaconEventListener;
 import com.gimbal.android.BeaconManager;
 import com.gimbal.android.BeaconSighting;
@@ -32,6 +27,7 @@ import com.gimbal.logging.GimbalLogConfig;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 
 /**
@@ -56,15 +52,9 @@ public class WelcomeFragment extends Fragment {
 
     private PlaceManager placeManager;
     private PlaceEventListener placeEventListener;
-    private BeaconEventListener beaconEventListener;
-    private BeaconManager beaconManager;
     private String TAG = "beacon";
 
-    public ArrayAdapter<String> listAdapter;
-    public ListView listView;
-
     private Map<String, String> headers;
-    RequestQueue queue;
 
     private ImageView imageViewServiceStatus;
 
@@ -116,7 +106,6 @@ public class WelcomeFragment extends Fragment {
         imageViewServiceStatus = (ImageView) view.findViewById(R.id.imageViewServiceStatus);
         imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_offline_32);
 
-        queue = Volley.newRequestQueue(getActivity());
         headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
         headers.put("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71");
@@ -226,9 +215,34 @@ public class WelcomeFragment extends Fragment {
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                Toast.makeText(getActivity(), "Visit started", Toast.LENGTH_LONG).show();
-                PlayInteractionTask playInteractionTask = new PlayInteractionTask(visit.getPlace().getIdentifier());
-                playInteractionTask.execute();
+                InteractionHelper interactionHelper = new InteractionHelper(getActivity());
+
+                try {
+                    InteractionBundle interactionBundle = interactionHelper.getInteractionBundle(visit.getPlace().getIdentifier());
+
+                    AlertDialog.Builder alertDialog = new AlertDialog.Builder(getActivity());
+                    alertDialog.setTitle("Interaction Information");
+                    alertDialog.setMessage("Interaction Name: " + interactionBundle.getInteraction().getInteractionName() + "\n" +
+                            "Interaction Description: " + interactionBundle.getInteraction().getInteractionDescription() + "\n" +
+                            "Trigger Name: " + interactionBundle.getTrigger().getName() + "\n" +
+                            "Trigger Type: " + interactionBundle.getTrigger().getType() + "\n" +
+                            "Action Type: " + interactionBundle.getInteraction().getActionType() + "\n" +
+                            "Content Name: " + interactionBundle.getContent().getName() + "\n" +
+                            "Content Type: " + interactionBundle.getContent().getType() + "\n" +
+                            "Content Filepath: " + interactionBundle.getContent().getFilepath());
+                    alertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+
+                    alertDialog.show();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
 
             }
@@ -238,7 +252,7 @@ public class WelcomeFragment extends Fragment {
                 // TODO Auto-generated method stub
                 super.onVisitEnd(visit);
 
-                Toast.makeText(getActivity(), "Visit ended", Toast.LENGTH_LONG).show();
+                Toast.makeText(getActivity(), "Visit ended", Toast.LENGTH_SHORT).show();
 
             }
 
@@ -246,93 +260,6 @@ public class WelcomeFragment extends Fragment {
 
 
         return obj;
-    }
-
-    private class PlayInteractionTask extends AsyncTask<Void, Void, Void> {
-
-        private String placeID;
-        private String beaconFactoryID;
-        private Response.Listener<GimbalPlace> gimbalPlaceListener;
-        private Response.Listener<GimbalBeacon> gimbalBeaconListener;
-        private Response.Listener<Interaction> interactionListener;
-        private Response.Listener<Trigger> triggerListener;
-        private Response.ErrorListener errorListener;
-
-
-        public PlayInteractionTask(String placeID){
-            this.placeID = placeID;
-
-            triggerListener = new Response.Listener<Trigger>() {
-                @Override
-                public void onResponse(Trigger trigger) {
-                    String triggerType = trigger.getType();
-                }
-            };
-
-            interactionListener = new Response.Listener<Interaction>() {
-                @Override
-                public void onResponse(Interaction interaction) {
-                    int triggerID = Integer.parseInt(interaction.getTriggerID());
-
-                    Toast.makeText(getActivity(), "Getting Trigger information for ID: " + triggerID, Toast.LENGTH_LONG).show();
-
-                    String url = "http://senapps.ddns.net/database_api.php?action=getTrigger&id=" + triggerID;
-                    GsonRequest<Trigger> gsonRequest = new GsonRequest<>(url, Trigger.class, null, triggerListener, errorListener);
-                }
-            };
-
-            gimbalBeaconListener = new Response.Listener<GimbalBeacon>() {
-                @Override
-                public void onResponse(GimbalBeacon beacon) {
-                    int associatedInteractionID = Integer.parseInt(beacon.getAttributes().get("associated_interaction_ID"));
-                    Toast.makeText(getActivity(), "Associated Interaction ID: " + associatedInteractionID, Toast.LENGTH_LONG).show();
-                    String url = "http://senapps.ddns.net/database_api.php?action=getInteraction&id=" + associatedInteractionID;
-                    GsonRequest<Interaction> gsonRequest = new GsonRequest<>(url, Interaction.class, null, interactionListener, errorListener);
-                    queue.add(gsonRequest);
-                }
-            };
-
-            gimbalPlaceListener = new Response.Listener<GimbalPlace>() {
-                @Override
-                public void onResponse(GimbalPlace place) {
-                    GimbalBeacon beacon = place.getBeacons()[0];
-                    String beaconFactoryID = beacon.getFactoryId();
-
-                    Toast.makeText(getActivity(), "The Factory ID for the Beacon associated with this place is " + beaconFactoryID, Toast.LENGTH_LONG).show();
-
-                    String url = "https://manager.gimbal.com/api/beacons/" + beaconFactoryID;
-
-                    GsonRequest<GimbalBeacon> gsonRequest = new GsonRequest<>(url, GimbalBeacon.class, headers, gimbalBeaconListener, errorListener);
-                    queue.add(gsonRequest);
-                }
-            };
-
-            errorListener = new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.d("VolleyError", error.getMessage());
-                }
-            };
-        }
-
-        @Override
-        protected void onPreExecute(){
-
-        }
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            String url = "https://manager.gimbal.com/api/v2/places/" + placeID;
-            GsonRequest<GimbalPlace> gsonRequest = new GsonRequest<>(url, GimbalPlace.class, headers, gimbalPlaceListener, errorListener);
-            queue.add(gsonRequest);
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void result){
-
-        }
     }
 
     private void monitorGimbalStatus(){
