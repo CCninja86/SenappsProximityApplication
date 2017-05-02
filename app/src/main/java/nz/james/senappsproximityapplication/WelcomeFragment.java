@@ -2,10 +2,12 @@ package nz.james.senappsproximityapplication;
 
 import android.app.AlertDialog;
 import android.app.Fragment;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,7 +39,7 @@ import java.util.Map;
  * Use the {@link WelcomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class WelcomeFragment extends Fragment {
+public class WelcomeFragment extends Fragment implements PlaceBundleCompleteListener {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
@@ -51,11 +53,16 @@ public class WelcomeFragment extends Fragment {
 
     private PlaceManager placeManager;
     private PlaceEventListener placeEventListener;
+    private PlaceBundleCompleteListener placeBundleCompleteListener;
     private String TAG = "beacon";
 
     private Map<String, String> headers;
 
     private ImageView imageViewServiceStatus;
+
+    private Vibrator vibrator;
+
+    private ProgressDialog progressDialog;
 
     public WelcomeFragment() {
         // Required empty public constructor
@@ -93,6 +100,9 @@ public class WelcomeFragment extends Fragment {
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_welcome, container, false);
+
+        placeBundleCompleteListener = this;
+        vibrator = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
 
         ImageView imageViewInformation = (ImageView) view.findViewById(R.id.imageViewInformation);
         imageViewInformation.setOnClickListener(new View.OnClickListener() {
@@ -151,6 +161,8 @@ public class WelcomeFragment extends Fragment {
         super.onDetach();
         mListener = null;
     }
+
+
 
     /**
      * This interface must be implemented by activities that contain this
@@ -214,92 +226,29 @@ public class WelcomeFragment extends Fragment {
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                InteractionHelper interactionHelper = new InteractionHelper(getActivity());
-
-
-                final PlaceBundle placeBundle = interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
-
-                if(placeBundle != null){
-                    AlertDialog.Builder placeBundleAlertDialog = new AlertDialog.Builder(getActivity());
-                    placeBundleAlertDialog.setTitle("Place Bundle Retrieved");
-                    placeBundleAlertDialog.setMessage("Would you like to view the information for the entry interaction or exit interaction?");
-                    placeBundleAlertDialog.setNegativeButton("Entry Interaction", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            if(placeBundle.getEntryInteraction() != null){
-                                AlertDialog.Builder entryInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
-                                entryInteractionBundleAlertDialog.setTitle("Entry Interaction Information");
-                                entryInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundle.getEntryInteraction().getInteraction().getID() + "\n" +
-                                        "Interaction Name: " + placeBundle.getEntryInteraction().getInteraction().getInteractionName() + "\n" +
-                                        "Interaction Description: " + placeBundle.getEntryInteraction().getInteraction().getInteractionDescription() + "\n" +
-                                        "ActionType: " + placeBundle.getEntryInteraction().getInteraction().getActionType() + "\n" +
-                                        "NotificationMessage (if applicable): " + placeBundle.getEntryInteraction().getInteraction().getNotificationMessage() + "\n" +
-                                        "Trigger ID: " + placeBundle.getEntryInteraction().getTrigger().getID() + "\n" +
-                                        "Trigger Name: " + placeBundle.getEntryInteraction().getTrigger().getName() + "\n" +
-                                        "Trigger Type: " + placeBundle.getEntryInteraction().getTrigger().getType() + "\n" +
-                                        "Trigger Linger Time (0 = instantly): " + placeBundle.getEntryInteraction().getTrigger().getTime() + "\n" +
-                                        "Content ID: " + placeBundle.getEntryInteraction().getContent().getID() + "\n" +
-                                        "Content Name: " + placeBundle.getEntryInteraction().getContent().getName() + "\n" +
-                                        "Content Filepath: " + placeBundle.getEntryInteraction().getContent().getFilepath() + "\n" +
-                                        "Content Type: " + placeBundle.getEntryInteraction().getContent().getType());
-                                entryInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                    }
-                                });
-
-                                entryInteractionBundleAlertDialog.show();
-                            } else {
-                                Toast.makeText(getActivity(), "No Entry Interaction Set", Toast.LENGTH_LONG).show();
-                            }
-
-                        }
-                    });
-                    placeBundleAlertDialog.setPositiveButton("Exit Interaction", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            if(placeBundle.getExitInteraction() != null){
-                                AlertDialog.Builder exitInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
-                                exitInteractionBundleAlertDialog.setTitle("Exit Interaction Information");
-                                exitInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundle.getExitInteraction().getInteraction().getID() + "\n" +
-                                        "Interaction Name: " + placeBundle.getExitInteraction().getInteraction().getInteractionName() + "\n" +
-                                        "Interaction Description: " + placeBundle.getExitInteraction().getInteraction().getInteractionDescription() + "\n" +
-                                        "ActionType: " + placeBundle.getExitInteraction().getInteraction().getActionType() + "\n" +
-                                        "NotificationMessage (if applicable): " + placeBundle.getExitInteraction().getInteraction().getNotificationMessage() + "\n" +
-                                        "Trigger ID: " + placeBundle.getExitInteraction().getTrigger().getID() + "\n" +
-                                        "Trigger Name: " + placeBundle.getExitInteraction().getTrigger().getName() + "\n" +
-                                        "Trigger Type: " + placeBundle.getExitInteraction().getTrigger().getType() + "\n" +
-                                        "Trigger Linger Time (0 = instantly): " + placeBundle.getExitInteraction().getTrigger().getTime() + "\n" +
-                                        "Content ID: " + placeBundle.getExitInteraction().getContent().getID() + "\n" +
-                                        "Content Name: " + placeBundle.getExitInteraction().getContent().getName() + "\n" +
-                                        "Content Filepath: " + placeBundle.getExitInteraction().getContent().getFilepath() + "\n" +
-                                        "Content Type: " + placeBundle.getExitInteraction().getContent().getType());
-                                exitInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                    }
-                                });
-
-                                exitInteractionBundleAlertDialog.show();
-                            } else {
-                                Toast.makeText(getActivity(), "No Exit Interaction Set", Toast.LENGTH_LONG).show();
-                            }
-
-                        }
-                    });
-
-                    placeBundleAlertDialog.show();
-                } else {
-                    Toast.makeText(getActivity(), "No Place Bundle found", Toast.LENGTH_LONG).show();
+                if(vibrator.hasVibrator()){
+                    vibrator.vibrate(1000);
                 }
+
+                progressDialog = new ProgressDialog(getActivity());
+                progressDialog.setMessage("Getting Interaction Information...");
+                progressDialog.setIndeterminate(true);
+                progressDialog.setCancelable(false);
+                progressDialog.show();
+
+                InteractionHelper interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+
+
             }
 
             @Override
             public void onVisitEnd(Visit visit) {
-                // TODO Auto-generated method stub
                 super.onVisitEnd(visit);
+
+                if(vibrator.hasVibrator()){
+                    vibrator.vibrate(1000);
+                }
 
                 Toast.makeText(getActivity(), "Visit ended", Toast.LENGTH_SHORT).show();
 
@@ -310,6 +259,93 @@ public class WelcomeFragment extends Fragment {
 
         return obj;
     }
+
+    @Override
+    public void placeBundleDownloadComplete(PlaceBundle placeBundle) {
+        if(progressDialog != null && progressDialog.isShowing()){
+            progressDialog.dismiss();
+            progressDialog = null;
+        }
+
+        final PlaceBundle placeBundleFinal = placeBundle;
+
+        if(placeBundle != null){
+            AlertDialog.Builder placeBundleAlertDialog = new AlertDialog.Builder(getActivity());
+            placeBundleAlertDialog.setTitle("Place Bundle Retrieved");
+            placeBundleAlertDialog.setMessage("Would you like to view the information for the entry interaction or exit interaction?");
+            placeBundleAlertDialog.setNegativeButton("Entry Interaction", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if(placeBundleFinal.getEntryInteraction() != null){
+                        AlertDialog.Builder entryInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
+                        entryInteractionBundleAlertDialog.setTitle("Entry Interaction Information");
+                        entryInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundleFinal.getEntryInteraction().getInteraction().getID() + "\n" +
+                                "Interaction Name: " + placeBundleFinal.getEntryInteraction().getInteraction().getInteractionName() + "\n" +
+                                "Interaction Description: " + placeBundleFinal.getEntryInteraction().getInteraction().getInteractionDescription() + "\n" +
+                                "ActionType: " + placeBundleFinal.getEntryInteraction().getInteraction().getActionType() + "\n" +
+                                "NotificationMessage (if applicable): " + placeBundleFinal.getEntryInteraction().getInteraction().getNotificationMessage() + "\n" +
+                                "Trigger ID: " + placeBundleFinal.getEntryInteraction().getTrigger().getID() + "\n" +
+                                "Trigger Name: " + placeBundleFinal.getEntryInteraction().getTrigger().getName() + "\n" +
+                                "Trigger Type: " + placeBundleFinal.getEntryInteraction().getTrigger().getType() + "\n" +
+                                "Trigger Linger Time (0 = instantly): " + placeBundleFinal.getEntryInteraction().getTrigger().getTime() + "\n" +
+                                "Content ID: " + placeBundleFinal.getEntryInteraction().getContent().getID() + "\n" +
+                                "Content Name: " + placeBundleFinal.getEntryInteraction().getContent().getName() + "\n" +
+                                "Content Filepath: " + placeBundleFinal.getEntryInteraction().getContent().getFilepath() + "\n" +
+                                "Content Type: " + placeBundleFinal.getEntryInteraction().getContent().getType());
+                        entryInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+
+                        entryInteractionBundleAlertDialog.show();
+                    } else {
+                        Toast.makeText(getActivity(), "No Entry Interaction Set", Toast.LENGTH_LONG).show();
+                    }
+
+                }
+            });
+            placeBundleAlertDialog.setPositiveButton("Exit Interaction", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if(placeBundleFinal.getExitInteraction() != null){
+                        AlertDialog.Builder exitInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
+                        exitInteractionBundleAlertDialog.setTitle("Exit Interaction Information");
+                        exitInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundleFinal.getExitInteraction().getInteraction().getID() + "\n" +
+                                "Interaction Name: " + placeBundleFinal.getExitInteraction().getInteraction().getInteractionName() + "\n" +
+                                "Interaction Description: " + placeBundleFinal.getExitInteraction().getInteraction().getInteractionDescription() + "\n" +
+                                "ActionType: " + placeBundleFinal.getExitInteraction().getInteraction().getActionType() + "\n" +
+                                "NotificationMessage (if applicable): " + placeBundleFinal.getExitInteraction().getInteraction().getNotificationMessage() + "\n" +
+                                "Trigger ID: " + placeBundleFinal.getExitInteraction().getTrigger().getID() + "\n" +
+                                "Trigger Name: " + placeBundleFinal.getExitInteraction().getTrigger().getName() + "\n" +
+                                "Trigger Type: " + placeBundleFinal.getExitInteraction().getTrigger().getType() + "\n" +
+                                "Trigger Linger Time (0 = instantly): " + placeBundleFinal.getExitInteraction().getTrigger().getTime() + "\n" +
+                                "Content ID: " + placeBundleFinal.getExitInteraction().getContent().getID() + "\n" +
+                                "Content Name: " + placeBundleFinal.getExitInteraction().getContent().getName() + "\n" +
+                                "Content Filepath: " + placeBundleFinal.getExitInteraction().getContent().getFilepath() + "\n" +
+                                "Content Type: " + placeBundleFinal.getExitInteraction().getContent().getType());
+                        exitInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+
+                        exitInteractionBundleAlertDialog.show();
+                    } else {
+                        Toast.makeText(getActivity(), "No Exit Interaction Set", Toast.LENGTH_LONG).show();
+                    }
+
+                }
+            });
+
+            placeBundleAlertDialog.show();
+        } else {
+            Toast.makeText(getActivity(), "No Place Bundle found", Toast.LENGTH_LONG).show();
+        }
+    }
+
 
     private void monitorGimbalStatus(){
         final Handler handler = new Handler();
