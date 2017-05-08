@@ -5,6 +5,9 @@ import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Vibrator;
@@ -26,6 +29,9 @@ import com.gimbal.android.PlaceManager;
 import com.gimbal.android.Visit;
 import com.gimbal.logging.GimbalLogConfig;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +70,8 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
 
     private ProgressDialog progressDialog;
 
+    private Bundle userDataBundle;
+
     public WelcomeFragment() {
         // Required empty public constructor
     }
@@ -101,6 +109,11 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_welcome, container, false);
 
+        userDataBundle = getArguments();
+        String splashImageURL = userDataBundle.getString("ImageURL");
+        ImageView imageViewBackground = (ImageView) view.findViewById(R.id.imageViewBackground);
+        new ImageLoadTask(splashImageURL, imageViewBackground).execute();
+
         placeBundleCompleteListener = this;
         vibrator = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
 
@@ -137,6 +150,8 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
 
         return view;
     }
+
+
 
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(String action) {
@@ -367,4 +382,55 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
             }
         }, 5000);
     }
+
+    private class ImageLoadTask extends AsyncTask<Void, Void, Bitmap> {
+
+        private String url;
+        private ImageView imageView;
+
+        public ImageLoadTask(String url, ImageView imageView){
+            this.url = url;
+            this.imageView = imageView;
+        }
+
+        @Override
+        protected void onPreExecute(){
+            progressDialog = new ProgressDialog(getActivity());
+            progressDialog.setMessage("Loading Splash Image...");
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            progressDialog.setIndeterminate(true);
+            progressDialog.setCancelable(false);
+            progressDialog.show();
+        }
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+            try {
+                URL urlConnection = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) urlConnection
+                        .openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                InputStream input = connection.getInputStream();
+                Bitmap myBitmap = BitmapFactory.decodeStream(input);
+                return myBitmap;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap result){
+            if(progressDialog != null && progressDialog.isShowing()){
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
+
+            super.onPostExecute(result);
+            imageView.setImageBitmap(result);
+        }
+    }
+
 }
