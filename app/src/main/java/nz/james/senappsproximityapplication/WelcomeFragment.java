@@ -278,7 +278,14 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
                     vibrator.vibrate(1000);
                 }
 
-                Toast.makeText(getActivity(), "Visit ended", Toast.LENGTH_SHORT).show();
+                progressDialog = new ProgressDialog(getActivity());
+                progressDialog.setMessage("Getting Interaction Information...");
+                progressDialog.setIndeterminate(true);
+                progressDialog.setCancelable(false);
+                progressDialog.show();
+
+                interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
 
             }
 
