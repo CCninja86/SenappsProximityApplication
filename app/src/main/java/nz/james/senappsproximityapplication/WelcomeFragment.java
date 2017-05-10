@@ -1,10 +1,8 @@
 package nz.james.senappsproximityapplication;
 
-import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
@@ -45,7 +43,7 @@ import java.util.Map;
  * Use the {@link WelcomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class WelcomeFragment extends Fragment implements PlaceBundleCompleteListener {
+public class WelcomeFragment extends android.support.v4.app.Fragment implements PlaceBundleCompleteListener {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
@@ -65,12 +63,14 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
     private Map<String, String> headers;
 
     private ImageView imageViewServiceStatus;
-
     private Vibrator vibrator;
-
     private ProgressDialog progressDialog;
-
     private Bundle userDataBundle;
+    private InteractionHelper interactionHelper;
+    private String interactionType;
+    private Stopwatch stopwatch;
+
+    private Globals g;
 
     public WelcomeFragment() {
         // Required empty public constructor
@@ -109,10 +109,18 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_welcome, container, false);
 
+        g = Globals.getInstance();
+
         userDataBundle = getArguments();
         String splashImageURL = userDataBundle.getString("ImageURL");
         ImageView imageViewBackground = (ImageView) view.findViewById(R.id.imageViewBackground);
-        new ImageLoadTask(splashImageURL, imageViewBackground).execute();
+
+        if(g.getSplashImageBitmap() == null){
+            new SplashImageLoadTask(splashImageURL, imageViewBackground).execute();
+        } else {
+            imageViewBackground.setImageBitmap(g.getSplashImageBitmap());
+        }
+
 
         placeBundleCompleteListener = this;
         vibrator = (Vibrator) getActivity().getSystemService(Context.VIBRATOR_SERVICE);
@@ -192,6 +200,7 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onWelcomeFragmentInteraction(String action);
+        void onWelcomeFragmentInteraction(String type, String filepath);
     }
 
     private void listenBeacon() {
@@ -241,6 +250,8 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
+                interactionType = "entry";
+
                 if(vibrator.hasVibrator()){
                     vibrator.vibrate(1000);
                 }
@@ -251,7 +262,7 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
                 progressDialog.setCancelable(false);
                 progressDialog.show();
 
-                InteractionHelper interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
                 interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
 
 
@@ -260,6 +271,8 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
             @Override
             public void onVisitEnd(Visit visit) {
                 super.onVisitEnd(visit);
+
+                interactionType = "exit";
 
                 if(vibrator.hasVibrator()){
                     vibrator.vibrate(1000);
@@ -280,84 +293,33 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
         if(progressDialog != null && progressDialog.isShowing()){
             progressDialog.dismiss();
             progressDialog = null;
-        }
 
-        final PlaceBundle placeBundleFinal = placeBundle;
+            InteractionBundle interactionBundle = null;
 
-        if(placeBundle != null){
-            AlertDialog.Builder placeBundleAlertDialog = new AlertDialog.Builder(getActivity());
-            placeBundleAlertDialog.setTitle("Place Bundle Retrieved");
-            placeBundleAlertDialog.setMessage("Would you like to view the information for the entry interaction or exit interaction?");
-            placeBundleAlertDialog.setNegativeButton("Entry Interaction", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    if(placeBundleFinal.getEntryInteraction() != null){
-                        AlertDialog.Builder entryInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
-                        entryInteractionBundleAlertDialog.setTitle("Entry Interaction Information");
-                        entryInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundleFinal.getEntryInteraction().getInteraction().getID() + "\n" +
-                                "Interaction Name: " + placeBundleFinal.getEntryInteraction().getInteraction().getInteractionName() + "\n" +
-                                "Interaction Description: " + placeBundleFinal.getEntryInteraction().getInteraction().getInteractionDescription() + "\n" +
-                                "ActionType: " + placeBundleFinal.getEntryInteraction().getInteraction().getActionType() + "\n" +
-                                "NotificationMessage (if applicable): " + placeBundleFinal.getEntryInteraction().getInteraction().getNotificationMessage() + "\n" +
-                                "Trigger ID: " + placeBundleFinal.getEntryInteraction().getTrigger().getID() + "\n" +
-                                "Trigger Name: " + placeBundleFinal.getEntryInteraction().getTrigger().getName() + "\n" +
-                                "Trigger Type: " + placeBundleFinal.getEntryInteraction().getTrigger().getType() + "\n" +
-                                "Trigger Linger Time (0 = instantly): " + placeBundleFinal.getEntryInteraction().getTrigger().getTime() + "\n" +
-                                "Content ID: " + placeBundleFinal.getEntryInteraction().getContent().getID() + "\n" +
-                                "Content Name: " + placeBundleFinal.getEntryInteraction().getContent().getName() + "\n" +
-                                "Content Filepath: " + placeBundleFinal.getEntryInteraction().getContent().getFilepath() + "\n" +
-                                "Content Type: " + placeBundleFinal.getEntryInteraction().getContent().getType());
-                        entryInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                            }
-                        });
+            if(interactionType.equals("entry")){
+                interactionBundle = placeBundle.getEntryInteraction();
+            } else if(interactionType.equals("exit")){
+                interactionBundle = placeBundle.getExitInteraction();
+            } else {
+                Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
+            }
 
-                        entryInteractionBundleAlertDialog.show();
-                    } else {
-                        Toast.makeText(getActivity(), "No Entry Interaction Set", Toast.LENGTH_LONG).show();
+            String triggerType = interactionBundle.getTrigger().getType();
+
+            if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
+                interactionHelper.processInteraction(mListener, interactionBundle);
+            } else if(triggerType.equals("onLinger")){
+                int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
+                stopwatch = new Stopwatch();
+
+                while (true){
+                    if(stopwatch.getElapsedTime().getElapsedRealtimeMillis() == lingerTime * 1000){
+                        break;
                     }
-
                 }
-            });
-            placeBundleAlertDialog.setPositiveButton("Exit Interaction", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    if(placeBundleFinal.getExitInteraction() != null){
-                        AlertDialog.Builder exitInteractionBundleAlertDialog = new AlertDialog.Builder(getActivity());
-                        exitInteractionBundleAlertDialog.setTitle("Exit Interaction Information");
-                        exitInteractionBundleAlertDialog.setMessage("Interaction ID: " + placeBundleFinal.getExitInteraction().getInteraction().getID() + "\n" +
-                                "Interaction Name: " + placeBundleFinal.getExitInteraction().getInteraction().getInteractionName() + "\n" +
-                                "Interaction Description: " + placeBundleFinal.getExitInteraction().getInteraction().getInteractionDescription() + "\n" +
-                                "ActionType: " + placeBundleFinal.getExitInteraction().getInteraction().getActionType() + "\n" +
-                                "NotificationMessage (if applicable): " + placeBundleFinal.getExitInteraction().getInteraction().getNotificationMessage() + "\n" +
-                                "Trigger ID: " + placeBundleFinal.getExitInteraction().getTrigger().getID() + "\n" +
-                                "Trigger Name: " + placeBundleFinal.getExitInteraction().getTrigger().getName() + "\n" +
-                                "Trigger Type: " + placeBundleFinal.getExitInteraction().getTrigger().getType() + "\n" +
-                                "Trigger Linger Time (0 = instantly): " + placeBundleFinal.getExitInteraction().getTrigger().getTime() + "\n" +
-                                "Content ID: " + placeBundleFinal.getExitInteraction().getContent().getID() + "\n" +
-                                "Content Name: " + placeBundleFinal.getExitInteraction().getContent().getName() + "\n" +
-                                "Content Filepath: " + placeBundleFinal.getExitInteraction().getContent().getFilepath() + "\n" +
-                                "Content Type: " + placeBundleFinal.getExitInteraction().getContent().getType());
-                        exitInteractionBundleAlertDialog.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dialog.dismiss();
-                            }
-                        });
 
-                        exitInteractionBundleAlertDialog.show();
-                    } else {
-                        Toast.makeText(getActivity(), "No Exit Interaction Set", Toast.LENGTH_LONG).show();
-                    }
-
-                }
-            });
-
-            placeBundleAlertDialog.show();
-        } else {
-            Toast.makeText(getActivity(), "No Place Bundle found", Toast.LENGTH_LONG).show();
+                interactionHelper.processInteraction(mListener, interactionBundle);
+            }
         }
     }
 
@@ -383,12 +345,12 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
         }, 5000);
     }
 
-    private class ImageLoadTask extends AsyncTask<Void, Void, Bitmap> {
+    private class SplashImageLoadTask extends AsyncTask<Void, Void, Bitmap> {
 
         private String url;
         private ImageView imageView;
 
-        public ImageLoadTask(String url, ImageView imageView){
+        public SplashImageLoadTask(String url, ImageView imageView){
             this.url = url;
             this.imageView = imageView;
         }
@@ -430,6 +392,7 @@ public class WelcomeFragment extends Fragment implements PlaceBundleCompleteList
 
             super.onPostExecute(result);
             imageView.setImageBitmap(result);
+            g.setSplashImageBitmap(result);
         }
     }
 

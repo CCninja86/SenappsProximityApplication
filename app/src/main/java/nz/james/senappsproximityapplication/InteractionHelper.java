@@ -40,4 +40,11 @@ public class InteractionHelper {
             }
         });
     }
+
+    public void processInteraction(WelcomeFragment.OnFragmentInteractionListener listener, InteractionBundle interaction){
+        String contentType = interaction.getContent().getType();
+        String contentFilepath = interaction.getContent().getFilepath();
+
+        listener.onWelcomeFragmentInteraction(contentType, contentFilepath);
+    }
 }
