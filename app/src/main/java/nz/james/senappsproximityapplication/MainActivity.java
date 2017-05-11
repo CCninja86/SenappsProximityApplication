@@ -66,11 +66,10 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
     public void onWelcomeFragmentInteraction(String type, String filepath) {
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
         Bundle bundle = new Bundle();
+        bundle.putString("Filepath", filepath);
 
         switch (type){
             case "Image":
-                bundle.putString("Image", filepath);
-
                 ImageFragment imageFragment = new ImageFragment();
                 imageFragment.setArguments(bundle);
 
@@ -80,19 +79,21 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
 
                 break;
             case "Link":
-                bundle.putString("URL", filepath);
-
                 WebViewFragment webViewFragment = new WebViewFragment();
                 webViewFragment.setArguments(bundle);
 
-                fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 fragmentTransaction.replace(R.id.container, webViewFragment);
                 fragmentTransaction.addToBackStack(null);
                 fragmentTransaction.commit();
 
                 break;
             case "Text":
+                TextFileFragment textFileFragment = new TextFileFragment();
+                textFileFragment.setArguments(bundle);
 
+                fragmentTransaction.replace(R.id.container, textFileFragment);
+                fragmentTransaction.addToBackStack(null);
+                fragmentTransaction.commit();
 
 
                 break;

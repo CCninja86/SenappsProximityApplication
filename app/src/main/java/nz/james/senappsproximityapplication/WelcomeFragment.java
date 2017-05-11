@@ -7,6 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Vibrator;
 import android.util.Log;
@@ -68,7 +69,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
     private Bundle userDataBundle;
     private InteractionHelper interactionHelper;
     private String interactionType;
-    private Stopwatch stopwatch;
 
     private Globals g;
 
@@ -250,12 +250,11 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                interactionType = "entry";
-
                 if(vibrator.hasVibrator()){
                     vibrator.vibrate(1000);
                 }
 
+                interactionType = "entry";
                 progressDialog = new ProgressDialog(getActivity());
                 progressDialog.setMessage("Getting Interaction Information...");
                 progressDialog.setIndeterminate(true);
@@ -273,6 +272,7 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
                 super.onVisitEnd(visit);
 
                 interactionType = "exit";
+
 
                 if(vibrator.hasVibrator()){
                     vibrator.vibrate(1000);
@@ -300,33 +300,63 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         if(progressDialog != null && progressDialog.isShowing()){
             progressDialog.dismiss();
             progressDialog = null;
+        }
 
-            InteractionBundle interactionBundle = null;
+        InteractionBundle interactionBundle = null;
 
-            if(interactionType.equals("entry")){
-                interactionBundle = placeBundle.getEntryInteraction();
-            } else if(interactionType.equals("exit")){
-                interactionBundle = placeBundle.getExitInteraction();
-            } else {
-                Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
-            }
+        if(interactionType.equals("entry")){
+            interactionBundle = placeBundle.getEntryInteraction();
+        } else if(interactionType.equals("exit")){
+            interactionBundle = placeBundle.getExitInteraction();
+        } else {
+            Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
+        }
 
+        final InteractionBundle interactionBundleFinal = interactionBundle;
+
+        if(interactionBundle != null){
             String triggerType = interactionBundle.getTrigger().getType();
 
             if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
                 interactionHelper.processInteraction(mListener, interactionBundle);
             } else if(triggerType.equals("onLinger")){
                 int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
-                stopwatch = new Stopwatch();
+                int newLingerTime = 0;
 
-                while (true){
-                    if(stopwatch.getElapsedTime().getElapsedRealtimeMillis() == lingerTime * 1000){
-                        break;
-                    }
+                String multi = "seconds";
+
+                if(lingerTime >= 60 && lingerTime < 3600){
+                    multi = "minutes";
+                    newLingerTime = lingerTime / 60;
+                } else if(lingerTime >= 3600){
+                    multi = "hours";
+                    newLingerTime = lingerTime / 3600;
+                } else {
+                    newLingerTime = lingerTime;
                 }
 
-                interactionHelper.processInteraction(mListener, interactionBundle);
+                if(lingerTime == 1){
+                    multi = multi.substring(0, multi.length() - 1);
+                }
+
+                Toast.makeText(getActivity(), "Linger time of " + newLingerTime + " " + multi + "", Toast.LENGTH_LONG).show();
+
+                new CountDownTimer(lingerTime, 1000){
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        Toast.makeText(getActivity(), "Interaction will begin in " + millisUntilFinished / 1000 + " seconds", Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        interactionHelper.processInteraction(mListener, interactionBundleFinal);
+                    }
+                }.start();
+
+
             }
+        } else {
+            Toast.makeText(getActivity(), "No " + interactionType + " interaction defined. Set an interaction in the admin panel.", Toast.LENGTH_LONG).show();
         }
     }
 

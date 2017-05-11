@@ -70,7 +70,7 @@ public class WebViewFragment extends android.support.v4.app.Fragment {
         View view = inflater.inflate(R.layout.fragment_web_view, container, false);
 
         Bundle bundle = getArguments();
-        String url = bundle.getString("URL");
+        String url = bundle.getString("Filepath");
         WebView webView = (WebView) view.findViewById(R.id.webView);
         webView.setWebViewClient(new CustomWebViewClient());
         WebSettings webSettings = webView.getSettings();

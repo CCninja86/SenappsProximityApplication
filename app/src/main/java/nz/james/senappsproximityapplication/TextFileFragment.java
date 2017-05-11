@@ -7,6 +7,10 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
 
 
 /**
@@ -64,7 +68,28 @@ public class TextFileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_text_file, container, false);
+        View view = inflater.inflate(R.layout.fragment_text_file, container, false);
+
+        Bundle bundle = getArguments();
+        String filepath = bundle.getString("Filepath");
+
+
+
+        final TextView textViewFileContents = (TextView) view.findViewById(R.id.textViewFileContents);
+
+
+        Ion.with(getActivity())
+                .load(filepath)
+                .asString()
+                .setCallback(new FutureCallback<String>() {
+                    @Override
+                    public void onCompleted(Exception e, String contents) {
+                        textViewFileContents.setText(contents);
+                    }
+                });
+
+
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event
