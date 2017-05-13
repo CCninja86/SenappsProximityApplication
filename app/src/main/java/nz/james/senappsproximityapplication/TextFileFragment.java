@@ -1,12 +1,18 @@
 package nz.james.senappsproximityapplication;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.TextViewCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
 
 
 /**
@@ -28,6 +34,9 @@ public class TextFileFragment extends Fragment {
     private String mParam2;
 
     private OnFragmentInteractionListener mListener;
+
+    private TextView textViewFileContents;
+    private ProgressDialog progressDialog;
 
     public TextFileFragment() {
         // Required empty public constructor
@@ -64,7 +73,39 @@ public class TextFileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_text_file, container, false);
+        View view = inflater.inflate(R.layout.fragment_text_file, container, false);
+
+        Bundle bundle = getArguments();
+        String filepath = bundle.getString("Content");
+
+        textViewFileContents = (TextView) view.findViewById(R.id.textViewFileContents);
+
+        progressDialog = new ProgressDialog(getActivity());
+        progressDialog.setMessage("Loading...");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progressDialog.setIndeterminate(true);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        Ion.with(getActivity())
+                .load(filepath)
+                .asString()
+                .setCallback(new FutureCallback<String>() {
+                    @Override
+                    public void onCompleted(Exception e, String contents) {
+                        if(progressDialog != null && progressDialog.isShowing()){
+                            progressDialog.dismiss();
+                            progressDialog = null;
+                        }
+
+                        textViewFileContents.setText(contents);
+                    }
+                });
+
+
+
+
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event

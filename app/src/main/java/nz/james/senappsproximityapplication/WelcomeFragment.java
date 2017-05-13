@@ -153,7 +153,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
 
         initView();
         monitorPlace();
-        listenBeacon();
         CommunicationManager.getInstance().startReceivingCommunications();
 
         return view;
@@ -203,13 +202,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         void onWelcomeFragmentInteraction(String type, String filepath);
     }
 
-    private void listenBeacon() {
-        BeaconEventListener beaconEventListener = getBeaconEventListener();
-        BeaconManager beaconManager = new BeaconManager();
-        beaconManager.addListener(beaconEventListener);
-        beaconManager.startListening();
-    }
-
     private void monitorPlace() {
         placeEventListener = getPlaceEventListener();
         placeManager = PlaceManager.getInstance();
@@ -220,21 +212,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
     private void initView() {
         GimbalLogConfig.enableUncaughtExceptionLogging();
         GimbalDebugger.enableBeaconSightingsLogging();
-    }
-
-    private BeaconEventListener getBeaconEventListener() {
-        Log.i(TAG, "BeaconEventListener started sucessfully...");
-        BeaconEventListener beaconSightingListener = new BeaconEventListener() {
-            @Override
-            public void onBeaconSighting(BeaconSighting beaconSighting) {
-                super.onBeaconSighting(beaconSighting);
-
-            }
-        };
-
-
-
-        return beaconSightingListener;
     }
 
     private PlaceEventListener getPlaceEventListener() {
@@ -250,20 +227,22 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                interactionType = "entry";
 
-                if(vibrator.hasVibrator()){
-                    vibrator.vibrate(1000);
+                if(progressDialog == null){
+                    interactionType = "entry";
+
+                    progressDialog = new ProgressDialog(getActivity());
+                    progressDialog.setMessage("Getting Interaction Information...");
+                    progressDialog.setIndeterminate(true);
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
+
+                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                    interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
                 }
 
-                progressDialog = new ProgressDialog(getActivity());
-                progressDialog.setMessage("Getting Interaction Information...");
-                progressDialog.setIndeterminate(true);
-                progressDialog.setCancelable(false);
-                progressDialog.show();
 
-                interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
-                interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+
 
 
             }
@@ -273,10 +252,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
                 super.onVisitEnd(visit);
 
                 interactionType = "exit";
-
-                if(vibrator.hasVibrator()){
-                    vibrator.vibrate(1000);
-                }
 
                 progressDialog = new ProgressDialog(getActivity());
                 progressDialog.setMessage("Getting Interaction Information...");
@@ -300,33 +275,29 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         if(progressDialog != null && progressDialog.isShowing()){
             progressDialog.dismiss();
             progressDialog = null;
+        }
 
-            InteractionBundle interactionBundle = null;
+        InteractionBundle interactionBundle = null;
 
-            if(interactionType.equals("entry")){
-                interactionBundle = placeBundle.getEntryInteraction();
-            } else if(interactionType.equals("exit")){
-                interactionBundle = placeBundle.getExitInteraction();
-            } else {
-                Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
+        if(interactionType.equals("entry")){
+            interactionBundle = placeBundle.getEntryInteraction();
+        } else if(interactionType.equals("exit")){
+            interactionBundle = placeBundle.getExitInteraction();
+        } else {
+            Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
+        }
+
+        String triggerType = interactionBundle.getTrigger().getType();
+
+        if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
+            if(vibrator.hasVibrator()){
+                vibrator.vibrate(1000);
             }
 
-            String triggerType = interactionBundle.getTrigger().getType();
-
-            if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
-                interactionHelper.processInteraction(mListener, interactionBundle);
-            } else if(triggerType.equals("onLinger")){
-                int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
-                stopwatch = new Stopwatch();
-
-                while (true){
-                    if(stopwatch.getElapsedTime().getElapsedRealtimeMillis() == lingerTime * 1000){
-                        break;
-                    }
-                }
-
-                interactionHelper.processInteraction(mListener, interactionBundle);
-            }
+            interactionHelper.processInteraction(mListener, interactionBundle);
+        } else if(triggerType.equals("onLinger")){
+            int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
+            new DelayedInteractionTask(lingerTime, interactionBundle).execute();
         }
     }
 
@@ -400,6 +371,50 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             super.onPostExecute(result);
             imageView.setImageBitmap(result);
             g.setSplashImageBitmap(result);
+        }
+    }
+
+    private class DelayedInteractionTask extends AsyncTask<Void, Void, Void> {
+
+        private InteractionBundle interactionBundle;
+        private Stopwatch stopwatch;
+        private int delay;
+
+        public DelayedInteractionTask(int delay, InteractionBundle interactionBundle){
+            this.delay = delay;
+            this.interactionBundle = interactionBundle;
+        }
+
+        @Override
+        protected void onPreExecute(){
+            stopwatch = new Stopwatch();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            while(stopwatch.getElapsedTime().getElapsedRealtimeMillis() < delay * 1000){
+                // timer loop
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result){
+            if(progressDialog != null && progressDialog.isShowing()){
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
+
+            if(stopwatch != null){
+                stopwatch = null;
+            }
+
+            if(vibrator.hasVibrator()){
+                vibrator.vibrate(1000);
+            }
+
+            interactionHelper.processInteraction(mListener, interactionBundle);
         }
     }
 

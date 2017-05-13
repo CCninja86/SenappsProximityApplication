@@ -42,9 +42,16 @@ public class InteractionHelper {
     }
 
     public void processInteraction(WelcomeFragment.OnFragmentInteractionListener listener, InteractionBundle interaction){
-        String contentType = interaction.getContent().getType();
-        String contentFilepath = interaction.getContent().getFilepath();
+        if(interaction.getInteraction().getActionType().equals("content")){
+            String contentType = interaction.getContent().getType();
+            String contentFilepath = interaction.getContent().getFilepath();
 
-        listener.onWelcomeFragmentInteraction(contentType, contentFilepath);
+            listener.onWelcomeFragmentInteraction(contentType, contentFilepath);
+        } else if(interaction.getInteraction().getActionType().equals("notification")){
+            String notificationMessage = interaction.getInteraction().getNotificationMessage();
+
+            listener.onWelcomeFragmentInteraction("Notification", notificationMessage);
+        }
+
     }
 }

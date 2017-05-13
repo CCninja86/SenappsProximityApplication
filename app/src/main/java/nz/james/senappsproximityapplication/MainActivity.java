@@ -1,12 +1,19 @@
 package nz.james.senappsproximityapplication;
 
 import android.Manifest;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.media.RingtoneManager;
 import android.support.v4.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
@@ -63,14 +70,15 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
     }
 
     @Override
-    public void onWelcomeFragmentInteraction(String type, String filepath) {
+    public void onWelcomeFragmentInteraction(String type, String content) {
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
         Bundle bundle = new Bundle();
+        bundle.putString("Content", content);
+
+
 
         switch (type){
             case "Image":
-                bundle.putString("Image", filepath);
-
                 ImageFragment imageFragment = new ImageFragment();
                 imageFragment.setArguments(bundle);
 
@@ -80,8 +88,6 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
 
                 break;
             case "Link":
-                bundle.putString("URL", filepath);
-
                 WebViewFragment webViewFragment = new WebViewFragment();
                 webViewFragment.setArguments(bundle);
 
@@ -92,6 +98,33 @@ public class MainActivity extends AppCompatActivity implements WelcomeFragment.O
 
                 break;
             case "Text":
+                TextFileFragment textFileFragment = new TextFileFragment();
+                textFileFragment.setArguments(bundle);
+
+                fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.container, textFileFragment);
+                fragmentTransaction.addToBackStack(null);
+                fragmentTransaction.commit();
+
+                break;
+            case "Notification":
+                Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+                        .setSmallIcon(R.drawable.information_icon)
+                        .setContentTitle("Senapps Proximity Application")
+                        .setContentText(content)
+                        .setSound(soundUri);
+
+                Intent resultIntent = new Intent(this, MainActivity.class);
+
+                TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+                stackBuilder.addParentStack(MainActivity.class);
+                stackBuilder.addNextIntent(resultIntent);
+
+                PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+                NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(0, builder.build());
+
 
 
 
