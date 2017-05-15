@@ -7,7 +7,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Vibrator;
 import android.util.Log;
@@ -69,6 +68,7 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
     private Bundle userDataBundle;
     private InteractionHelper interactionHelper;
     private String interactionType;
+    private Stopwatch stopwatch;
 
     private Globals g;
 
@@ -153,7 +153,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
 
         initView();
         monitorPlace();
-        listenBeacon();
         CommunicationManager.getInstance().startReceivingCommunications();
 
         return view;
@@ -203,13 +202,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         void onWelcomeFragmentInteraction(String type, String filepath);
     }
 
-    private void listenBeacon() {
-        BeaconEventListener beaconEventListener = getBeaconEventListener();
-        BeaconManager beaconManager = new BeaconManager();
-        beaconManager.addListener(beaconEventListener);
-        beaconManager.startListening();
-    }
-
     private void monitorPlace() {
         placeEventListener = getPlaceEventListener();
         placeManager = PlaceManager.getInstance();
@@ -220,21 +212,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
     private void initView() {
         GimbalLogConfig.enableUncaughtExceptionLogging();
         GimbalDebugger.enableBeaconSightingsLogging();
-    }
-
-    private BeaconEventListener getBeaconEventListener() {
-        Log.i(TAG, "BeaconEventListener started sucessfully...");
-        BeaconEventListener beaconSightingListener = new BeaconEventListener() {
-            @Override
-            public void onBeaconSighting(BeaconSighting beaconSighting) {
-                super.onBeaconSighting(beaconSighting);
-
-            }
-        };
-
-
-
-        return beaconSightingListener;
     }
 
     private PlaceEventListener getPlaceEventListener() {
@@ -250,19 +227,22 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                if(vibrator.hasVibrator()){
-                    vibrator.vibrate(1000);
+
+                if(progressDialog == null){
+                    interactionType = "entry";
+
+                    progressDialog = new ProgressDialog(getActivity());
+                    progressDialog.setMessage("Getting Interaction Information...");
+                    progressDialog.setIndeterminate(true);
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
+
+                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                    interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
                 }
 
-                interactionType = "entry";
-                progressDialog = new ProgressDialog(getActivity());
-                progressDialog.setMessage("Getting Interaction Information...");
-                progressDialog.setIndeterminate(true);
-                progressDialog.setCancelable(false);
-                progressDialog.show();
 
-                interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
-                interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+
 
 
             }
@@ -272,11 +252,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
                 super.onVisitEnd(visit);
 
                 interactionType = "exit";
-
-
-                if(vibrator.hasVibrator()){
-                    vibrator.vibrate(1000);
-                }
 
                 progressDialog = new ProgressDialog(getActivity());
                 progressDialog.setMessage("Getting Interaction Information...");
@@ -312,51 +287,17 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
         }
 
-        final InteractionBundle interactionBundleFinal = interactionBundle;
+        String triggerType = interactionBundle.getTrigger().getType();
 
-        if(interactionBundle != null){
-            String triggerType = interactionBundle.getTrigger().getType();
-
-            if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
-                interactionHelper.processInteraction(mListener, interactionBundle);
-            } else if(triggerType.equals("onLinger")){
-                int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
-                int newLingerTime = 0;
-
-                String multi = "seconds";
-
-                if(lingerTime >= 60 && lingerTime < 3600){
-                    multi = "minutes";
-                    newLingerTime = lingerTime / 60;
-                } else if(lingerTime >= 3600){
-                    multi = "hours";
-                    newLingerTime = lingerTime / 3600;
-                } else {
-                    newLingerTime = lingerTime;
-                }
-
-                if(lingerTime == 1){
-                    multi = multi.substring(0, multi.length() - 1);
-                }
-
-                Toast.makeText(getActivity(), "Linger time of " + newLingerTime + " " + multi + "", Toast.LENGTH_LONG).show();
-
-                new CountDownTimer(lingerTime, 1000){
-                    @Override
-                    public void onTick(long millisUntilFinished) {
-                        Toast.makeText(getActivity(), "Interaction will begin in " + millisUntilFinished / 1000 + " seconds", Toast.LENGTH_LONG).show();
-                    }
-
-                    @Override
-                    public void onFinish() {
-                        interactionHelper.processInteraction(mListener, interactionBundleFinal);
-                    }
-                }.start();
-
-
+        if(triggerType.equals("onEnter") || triggerType.equals("onLeave")){
+            if(vibrator.hasVibrator()){
+                vibrator.vibrate(1000);
             }
-        } else {
-            Toast.makeText(getActivity(), "No " + interactionType + " interaction defined. Set an interaction in the admin panel.", Toast.LENGTH_LONG).show();
+
+            interactionHelper.processInteraction(mListener, interactionBundle);
+        } else if(triggerType.equals("onLinger")){
+            int lingerTime = Integer.parseInt(interactionBundle.getTrigger().getTime());
+            new DelayedInteractionTask(lingerTime, interactionBundle).execute();
         }
     }
 
@@ -430,6 +371,50 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             super.onPostExecute(result);
             imageView.setImageBitmap(result);
             g.setSplashImageBitmap(result);
+        }
+    }
+
+    private class DelayedInteractionTask extends AsyncTask<Void, Void, Void> {
+
+        private InteractionBundle interactionBundle;
+        private Stopwatch stopwatch;
+        private int delay;
+
+        public DelayedInteractionTask(int delay, InteractionBundle interactionBundle){
+            this.delay = delay;
+            this.interactionBundle = interactionBundle;
+        }
+
+        @Override
+        protected void onPreExecute(){
+            stopwatch = new Stopwatch();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            while(stopwatch.getElapsedTime().getElapsedRealtimeMillis() < delay * 1000){
+                // timer loop
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result){
+            if(progressDialog != null && progressDialog.isShowing()){
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
+
+            if(stopwatch != null){
+                stopwatch = null;
+            }
+
+            if(vibrator.hasVibrator()){
+                vibrator.vibrate(1000);
+            }
+
+            interactionHelper.processInteraction(mListener, interactionBundle);
         }
     }
 

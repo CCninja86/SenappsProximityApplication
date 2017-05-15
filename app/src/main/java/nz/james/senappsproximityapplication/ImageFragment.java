@@ -80,7 +80,7 @@ public class ImageFragment extends Fragment {
         ImageView imageView = (ImageView) view.findViewById(R.id.imageView);
 
         Bundle bundle = getArguments();
-        String url = bundle.getString("Filepath");
+        String url = bundle.getString("Content");
 
         new ImageLoadTask(url, imageView).execute();
 
