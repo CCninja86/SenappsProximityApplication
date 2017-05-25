@@ -23,6 +23,9 @@ import com.gimbal.android.PlaceEventListener;
 import com.gimbal.android.PlaceManager;
 import com.gimbal.android.Visit;
 import com.gimbal.logging.GimbalLogConfig;
+import com.google.gson.reflect.TypeToken;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -224,23 +227,58 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
+               final Visit visitFinal = visit;
 
-                if(progressDialog == null){
-                    interactionType = "entry";
+                progressDialog = new ProgressDialog(getActivity());
+                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                progressDialog.setMessage("Getting Beacon data...");
+                progressDialog.setIndeterminate(true);
+                progressDialog.setCancelable(false);
+                progressDialog.show();
 
-                    progressDialog = new ProgressDialog(getActivity());
-                    progressDialog.setMessage("Getting Interaction Information...");
-                    progressDialog.setIndeterminate(true);
-                    progressDialog.setCancelable(false);
-                    progressDialog.show();
+                Ion.with(getActivity())
+                        .load("https://manager.gimbal.com/api/v2/places/" + visit.getPlace().getIdentifier())
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                        .as(new TypeToken<GimbalPlace>(){})
+                        .setCallback(new FutureCallback<GimbalPlace>() {
+                            @Override
+                            public void onCompleted(Exception e, GimbalPlace place) {
+                                final String beaconFactoryID = place.getBeacons()[0].getFactoryId();
 
-                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
-                    interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
-                }
+                                Ion.with(getActivity())
+                                        .load("https://manager.gimbal.com/api/beacons/" + beaconFactoryID)
+                                        .addHeader("Content-Type", "application/json")
+                                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                                        .as(new TypeToken<GimbalBeacon>(){})
+                                        .setCallback(new FutureCallback<GimbalBeacon>() {
+                                            @Override
+                                            public void onCompleted(Exception e, GimbalBeacon beacon) {
+                                                if(progressDialog != null && progressDialog.isShowing()){
+                                                    progressDialog.dismiss();
+                                                    progressDialog = null;
+                                                }
 
+                                                boolean active = Boolean.parseBoolean(beacon.getAttributes().get("active"));
 
+                                                if(active && progressDialog == null){
+                                                    interactionType = "entry";
 
+                                                    progressDialog = new ProgressDialog(getActivity());
+                                                    progressDialog.setMessage("Getting Interaction Information...");
+                                                    progressDialog.setIndeterminate(true);
+                                                    progressDialog.setCancelable(false);
+                                                    progressDialog.show();
 
+                                                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                                                    interactionHelper.getPlaceBundle(visitFinal.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+                                                } else {
+                                                    Toast.makeText(getActivity(), "This Beacon is not active. Enable the beacon in the admin panel first.", Toast.LENGTH_LONG).show();
+                                                }
+                                            }
+                                        });
+                            }
+                        });
 
             }
 
@@ -248,16 +286,58 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitEnd(Visit visit) {
                 super.onVisitEnd(visit);
 
-                interactionType = "exit";
+                final Visit visitFinal = visit;
 
                 progressDialog = new ProgressDialog(getActivity());
-                progressDialog.setMessage("Getting Interaction Information...");
+                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                progressDialog.setMessage("Getting Beacon data...");
                 progressDialog.setIndeterminate(true);
                 progressDialog.setCancelable(false);
                 progressDialog.show();
 
-                interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
-                interactionHelper.getPlaceBundle(visit.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+                Ion.with(getActivity())
+                        .load("https://manager.gimbal.com/api/v2/places/" + visit.getPlace().getIdentifier())
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                        .as(new TypeToken<GimbalPlace>(){})
+                        .setCallback(new FutureCallback<GimbalPlace>() {
+                            @Override
+                            public void onCompleted(Exception e, GimbalPlace place) {
+                                final String beaconFactoryID = place.getBeacons()[0].getFactoryId();
+
+                                Ion.with(getActivity())
+                                        .load("https://manager.gimbal.com/api/beacons/" + beaconFactoryID)
+                                        .addHeader("Content-Type", "application/json")
+                                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                                        .as(new TypeToken<GimbalBeacon>(){})
+                                        .setCallback(new FutureCallback<GimbalBeacon>() {
+                                            @Override
+                                            public void onCompleted(Exception e, GimbalBeacon beacon) {
+                                                if(progressDialog != null && progressDialog.isShowing()){
+                                                    progressDialog.dismiss();
+                                                    progressDialog = null;
+                                                }
+
+                                                boolean active = Boolean.parseBoolean(beacon.getAttributes().get("active"));
+
+                                                if(active){
+                                                    interactionType = "exit";
+
+                                                    progressDialog = new ProgressDialog(getActivity());
+                                                    progressDialog.setMessage("Getting Interaction Information...");
+                                                    progressDialog.setIndeterminate(true);
+                                                    progressDialog.setCancelable(false);
+                                                    progressDialog.show();
+
+                                                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                                                    interactionHelper.getPlaceBundle(visitFinal.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+                                                } else {
+                                                    Toast.makeText(getActivity(), "This Beacon is not active. Enable the beacon in the admin panel first.", Toast.LENGTH_LONG).show();
+                                                }
+                                            }
+                                        });
+                            }
+                        });
 
             }
 
