@@ -320,7 +320,7 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
 
                                                 boolean active = Boolean.parseBoolean(beacon.getAttributes().get("active"));
 
-                                                if(active){
+                                                if(active && progressDialog == null){
                                                     interactionType = "exit";
 
                                                     progressDialog = new ProgressDialog(getActivity());
