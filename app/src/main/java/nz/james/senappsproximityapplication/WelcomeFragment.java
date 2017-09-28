@@ -1,5 +1,6 @@
 package nz.james.senappsproximityapplication;
 
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -9,12 +10,15 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Vibrator;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.gimbal.android.BeaconEventListener;
+import com.gimbal.android.BeaconManager;
 import com.gimbal.android.BeaconSighting;
 import com.gimbal.android.CommunicationManager;
 import com.gimbal.android.Gimbal;
@@ -30,9 +34,13 @@ import com.koushikdutta.ion.Ion;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -109,6 +117,21 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_welcome, container, false);
 
+        // Visit Data Values
+
+//        String androidID = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+//        String interactionName = "ImageInteraction";
+//        Date timeEntered = new Date();
+//        Date timeExited = new Date();
+//
+//        long diffInMs = timeExited.getTime() - timeEntered.getTime();
+//        long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diffInMs);
+//
+//        InteractionVisit interactionVisit = new InteractionVisit(getActivity(), androidID, interactionName, timeEntered, timeExited, diffInSec);
+//        interactionVisit.uploadVisitData();
+
+        // Visit Data Values
+
         g = Globals.getInstance();
 
         userDataBundle = getArguments();
@@ -140,7 +163,7 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         headers.put("Content-Type", "application/json");
         headers.put("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71");
 
-        Gimbal.setApiKey(getActivity().getApplication(), "a283f434-d865-449d-9592-ee48e8f99125");
+        Gimbal.setApiKey(getActivity().getApplication(), "8286e575-da0e-46ad-9b7a-ab8f77a70ef9");
 
         if(!Gimbal.isStarted()){
             Gimbal.start();
@@ -148,6 +171,19 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         } else {
             imageViewServiceStatus.setImageResource(R.drawable.gimbal_service_online_32);
         }
+
+        BeaconManager beaconManager = new BeaconManager();
+
+        BeaconEventListener beaconEventListener = new BeaconEventListener() {
+            @Override
+            public void onBeaconSighting(BeaconSighting beaconSighting) {
+                super.onBeaconSighting(beaconSighting);
+                Toast.makeText(getActivity(), "Sighted", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        beaconManager.addListener(beaconEventListener);
+        beaconManager.startListening();
 
         monitorGimbalStatus();
 
@@ -207,11 +243,15 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         placeManager = PlaceManager.getInstance();
         placeManager.addListener(placeEventListener);
         placeManager.startMonitoring();
+
+        Toast.makeText(getActivity(), "Is Monitoring: " + placeManager.getInstance().isMonitoring(), Toast.LENGTH_LONG).show();
     }
 
     private void initView() {
         GimbalLogConfig.enableUncaughtExceptionLogging();
         GimbalDebugger.enableBeaconSightingsLogging();
+        GimbalDebugger.enablePlaceLogging();
+        GimbalDebugger.enableStatausLogging();
     }
 
     private PlaceEventListener getPlaceEventListener() {
@@ -227,7 +267,10 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-               final Visit visitFinal = visit;
+                String entryTimeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
+
+
+                final Visit visitFinal = visit;
 
                 progressDialog = new ProgressDialog(getActivity());
                 progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
