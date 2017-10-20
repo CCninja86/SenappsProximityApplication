@@ -17,19 +17,19 @@ import java.util.Date;
  * Created by james on 29/09/2017.
  */
 
-public class InteractionVisit {
+public class PlaceVisit {
 
     private String androidID;
-    private String interactionName;
+    private String placeName;
     private String timeEntered;
     private String timeExited;
     private long visitDurationSeconds;
     private Context context;
 
 
-    public InteractionVisit(Context context, String androidID, String interactionName, Date timeEntered, Date timeExited, long visitDurationSeconds){
+    public PlaceVisit(Context context, String androidID, String placeName, Date timeEntered, Date timeExited, long visitDurationSeconds){
         this.androidID = androidID;
-        this.interactionName = interactionName;
+        this.placeName = placeName;
 
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-ddd HH:mm:ss");
 
@@ -46,7 +46,7 @@ public class InteractionVisit {
 
     public void uploadVisitData(){
         Ion.with(context)
-                .load("http://senapps.ddns.net/database_api.php?action=uploadVisitData&androidID=" + androidID + "&interactionName=" + interactionName +
+                .load("http://senapps.ddns.net/database_api.php?action=uploadVisitData&androidID=" + androidID + "&placeName=" + placeName +
                 "&timeEntered=" + urlEncode(timeEntered) + "&timeExited=" + urlEncode(timeExited) + "&visitDuration=" + visitDurationSeconds + "&key=8afb2533daebebd01d0df52117e8aa71")
                 .asString()
                 .setCallback(new FutureCallback<String>() {
@@ -91,12 +91,12 @@ public class InteractionVisit {
         this.androidID = androidID;
     }
 
-    public String getInteractionName() {
-        return interactionName;
+    public String getPlaceName() {
+        return placeName;
     }
 
-    public void setInteractionName(String interactionName) {
-        this.interactionName = interactionName;
+    public void setPlaceName(String placeName) {
+        this.placeName = placeName;
     }
 
     public String getTimeEntered() {

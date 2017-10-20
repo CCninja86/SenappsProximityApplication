@@ -1,6 +1,5 @@
 package nz.james.senappsproximityapplication;
 
-import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -20,7 +19,6 @@ import android.widget.Toast;
 import com.gimbal.android.BeaconEventListener;
 import com.gimbal.android.BeaconManager;
 import com.gimbal.android.BeaconSighting;
-import com.gimbal.android.CommunicationManager;
 import com.gimbal.android.Gimbal;
 import com.gimbal.android.GimbalDebugger;
 import com.gimbal.android.PlaceEventListener;
@@ -34,8 +32,6 @@ import com.koushikdutta.ion.Ion;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +76,11 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
 
     private Globals g;
 
+    private Date timeEntered;
+    private Date timeExited;
+    private String androidID;
+    private String placeName;
+
     public WelcomeFragment() {
         // Required empty public constructor
     }
@@ -117,21 +118,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_welcome, container, false);
 
-        // Visit Data Values
-
-//        String androidID = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-//        String interactionName = "ImageInteraction";
-//        Date timeEntered = new Date();
-//        Date timeExited = new Date();
-//
-//        long diffInMs = timeExited.getTime() - timeEntered.getTime();
-//        long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diffInMs);
-//
-//        InteractionVisit interactionVisit = new InteractionVisit(getActivity(), androidID, interactionName, timeEntered, timeExited, diffInSec);
-//        interactionVisit.uploadVisitData();
-
-        // Visit Data Values
-
         g = Globals.getInstance();
 
         userDataBundle = getArguments();
@@ -163,7 +149,7 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         headers.put("Content-Type", "application/json");
         headers.put("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71");
 
-        Gimbal.setApiKey(getActivity().getApplication(), "8286e575-da0e-46ad-9b7a-ab8f77a70ef9");
+        Gimbal.setApiKey(getActivity().getApplication(), "005ff5fd-8b55-42a0-9835-4c9489e18bcd");
 
         if(!Gimbal.isStarted()){
             Gimbal.start();
@@ -178,7 +164,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             @Override
             public void onBeaconSighting(BeaconSighting beaconSighting) {
                 super.onBeaconSighting(beaconSighting);
-                Toast.makeText(getActivity(), "Sighted", Toast.LENGTH_SHORT).show();
             }
         };
 
@@ -189,7 +174,6 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
 
         initView();
         monitorPlace();
-        CommunicationManager.getInstance().startReceivingCommunications();
 
         return view;
     }
@@ -267,7 +251,10 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                String entryTimeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
+                timeEntered = new Date();
+                androidID = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+                placeName = visit.getPlace().getName();
+
 
 
                 final Visit visitFinal = visit;
@@ -382,6 +369,23 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
                             }
                         });
 
+
+
+
+                timeExited = new Date();
+
+                long diffInMs = timeExited.getTime() - timeEntered.getTime();
+                long diffInSec = TimeUnit.MILLISECONDS.toSeconds(diffInMs);
+
+                if(androidID == null || placeName == null || timeEntered == null || timeExited == null){
+                    Toast.makeText(getActivity(), "One or more values invalid. Visit Data Upload aborted.", Toast.LENGTH_LONG).show();
+                } else {
+                    PlaceVisit placeVisit = new PlaceVisit(getActivity(), androidID, placeName, timeEntered, timeExited, diffInSec);
+                    placeVisit.uploadVisitData();
+                }
+
+
+
             }
 
         };
@@ -406,6 +410,8 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
         } else {
             Toast.makeText(getActivity(), "Oops! Something went wrong!", Toast.LENGTH_SHORT).show();
         }
+
+
 
         String triggerType = interactionBundle.getTrigger().getType();
 
