@@ -81,6 +81,8 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
     private String androidID;
     private String placeName;
 
+    private boolean isInPlace = false;
+
     public WelcomeFragment() {
         // Required empty public constructor
     }
@@ -251,70 +253,75 @@ public class WelcomeFragment extends android.support.v4.app.Fragment implements 
             public void onVisitStart(Visit visit) {
                 super.onVisitStart(visit);
 
-                timeEntered = new Date();
-                androidID = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-                placeName = visit.getPlace().getName();
+                if(!isInPlace){
+                    isInPlace = true;
 
+                    timeEntered = new Date();
+                    androidID = Settings.Secure.getString(getContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+                    placeName = visit.getPlace().getName();
 
+                    final Visit visitFinal = visit;
 
-                final Visit visitFinal = visit;
+                    progressDialog = new ProgressDialog(getActivity());
+                    progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+                    progressDialog.setMessage("Getting Beacon data...");
+                    progressDialog.setIndeterminate(true);
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
 
-                progressDialog = new ProgressDialog(getActivity());
-                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-                progressDialog.setMessage("Getting Beacon data...");
-                progressDialog.setIndeterminate(true);
-                progressDialog.setCancelable(false);
-                progressDialog.show();
+                    Ion.with(getActivity())
+                            .load("https://manager.gimbal.com/api/v2/places/" + visit.getPlace().getIdentifier())
+                            .addHeader("Content-Type", "application/json")
+                            .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                            .as(new TypeToken<GimbalPlace>(){})
+                            .setCallback(new FutureCallback<GimbalPlace>() {
+                                @Override
+                                public void onCompleted(Exception e, GimbalPlace place) {
+                                    final String beaconFactoryID = place.getBeacons()[0].getFactoryId();
 
-                Ion.with(getActivity())
-                        .load("https://manager.gimbal.com/api/v2/places/" + visit.getPlace().getIdentifier())
-                        .addHeader("Content-Type", "application/json")
-                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
-                        .as(new TypeToken<GimbalPlace>(){})
-                        .setCallback(new FutureCallback<GimbalPlace>() {
-                            @Override
-                            public void onCompleted(Exception e, GimbalPlace place) {
-                                final String beaconFactoryID = place.getBeacons()[0].getFactoryId();
+                                    Ion.with(getActivity())
+                                            .load("https://manager.gimbal.com/api/beacons/" + beaconFactoryID)
+                                            .addHeader("Content-Type", "application/json")
+                                            .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
+                                            .as(new TypeToken<GimbalBeacon>(){})
+                                            .setCallback(new FutureCallback<GimbalBeacon>() {
+                                                @Override
+                                                public void onCompleted(Exception e, GimbalBeacon beacon) {
+                                                    if(progressDialog != null && progressDialog.isShowing()){
+                                                        progressDialog.dismiss();
+                                                        progressDialog = null;
+                                                    }
 
-                                Ion.with(getActivity())
-                                        .load("https://manager.gimbal.com/api/beacons/" + beaconFactoryID)
-                                        .addHeader("Content-Type", "application/json")
-                                        .addHeader("AUTHORIZATION", "Token token=8afb2533daebebd01d0df52117e8aa71")
-                                        .as(new TypeToken<GimbalBeacon>(){})
-                                        .setCallback(new FutureCallback<GimbalBeacon>() {
-                                            @Override
-                                            public void onCompleted(Exception e, GimbalBeacon beacon) {
-                                                if(progressDialog != null && progressDialog.isShowing()){
-                                                    progressDialog.dismiss();
-                                                    progressDialog = null;
+                                                    boolean active = Boolean.parseBoolean(beacon.getAttributes().get("active"));
+
+                                                    if(active && progressDialog == null){
+                                                        interactionType = "entry";
+
+                                                        progressDialog = new ProgressDialog(getActivity());
+                                                        progressDialog.setMessage("Getting Interaction Information...");
+                                                        progressDialog.setIndeterminate(true);
+                                                        progressDialog.setCancelable(false);
+                                                        progressDialog.show();
+
+                                                        interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
+                                                        interactionHelper.getPlaceBundle(visitFinal.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
+                                                    } else {
+                                                        Toast.makeText(getActivity(), "This Beacon is not active. Enable the beacon in the admin panel first.", Toast.LENGTH_LONG).show();
+                                                    }
                                                 }
-
-                                                boolean active = Boolean.parseBoolean(beacon.getAttributes().get("active"));
-
-                                                if(active && progressDialog == null){
-                                                    interactionType = "entry";
-
-                                                    progressDialog = new ProgressDialog(getActivity());
-                                                    progressDialog.setMessage("Getting Interaction Information...");
-                                                    progressDialog.setIndeterminate(true);
-                                                    progressDialog.setCancelable(false);
-                                                    progressDialog.show();
-
-                                                    interactionHelper = new InteractionHelper(getActivity(), placeBundleCompleteListener);
-                                                    interactionHelper.getPlaceBundle(visitFinal.getPlace().getIdentifier(), "8afb2533daebebd01d0df52117e8aa71");
-                                                } else {
-                                                    Toast.makeText(getActivity(), "This Beacon is not active. Enable the beacon in the admin panel first.", Toast.LENGTH_LONG).show();
-                                                }
-                                            }
-                                        });
-                            }
-                        });
-
+                                            });
+                                }
+                            });
+                }
             }
 
             @Override
             public void onVisitEnd(Visit visit) {
                 super.onVisitEnd(visit);
+
+                if(isInPlace){
+                    isInPlace = false;
+                }
 
                 final Visit visitFinal = visit;
 
